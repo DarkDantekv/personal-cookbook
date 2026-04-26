@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>My Cookbook</title>
+<title>Cultural Cookbook</title>
 <style>
 *{box-sizing:border-box;font-family:Georgia,serif}
 body{
@@ -137,8 +137,8 @@ textarea{min-height:100px}
 </head>
 <body>
 <header>
-  <h1>📖 My Storybook Cookbook</h1>
-  <p>A beautiful place to save family recipes, favorites, and kitchen experiments.</p>
+  <h1>📖 Cultural Cookbook</h1>
+  <p>A story-driven recipe book organized by culture, region, and tradition.</p>
 </header>
 
 <div class="container">
@@ -158,6 +158,7 @@ textarea{min-height:100px}
   <div class="modal-content">
     <h2>Add New Recipe</h2>
     <input id="recipeTitle" placeholder="Recipe title" />
+    <input id="recipeRegion" placeholder="Region (South Indian, North Indian, Italian...)" />
     <input id="recipeCategory" placeholder="Category (Breakfast, Dinner, Dessert...)" />
     <input id="recipeTime" placeholder="Cook time (ex: 30 mins)" />
     <input id="recipeServings" placeholder="Servings" />
@@ -194,10 +195,13 @@ function closeModal(){
   document.getElementById('recipeModal').style.display='none';
 }
 
+let editingRecipeId = null;
+
 function saveRecipe(){
   const recipe={
     id:Date.now(),
     title:document.getElementById('recipeTitle').value,
+    region:document.getElementById('recipeRegion').value,
     category:document.getElementById('recipeCategory').value,
     time:document.getElementById('recipeTime').value,
     servings:document.getElementById('recipeServings').value,
@@ -206,10 +210,39 @@ function saveRecipe(){
     steps:document.getElementById('recipeSteps').value.split('\n').filter(Boolean)
   };
 
-  recipes.push(recipe);
+  if (editingRecipeId) {
+    const index = recipes.findIndex(r => r.id === editingRecipeId);
+    recipe.id = editingRecipeId;
+    recipes[index] = recipe;
+    editingRecipeId = null;
+  } else {
+    recipes.push(recipe);
+  }
   saveData();
   renderRecipes();
   closeModal();
+}
+
+function editRecipe(id){
+  const recipe = recipes.find(r => r.id === id);
+  document.getElementById('recipeTitle').value = recipe.title;
+  document.getElementById('recipeRegion').value = recipe.region;
+  document.getElementById('recipeCategory').value = recipe.category;
+  document.getElementById('recipeTime').value = recipe.time;
+  document.getElementById('recipeServings').value = recipe.servings;
+  document.getElementById('recipeImage').value = recipe.image;
+  document.getElementById('recipeIngredients').value = recipe.ingredients.join('
+');
+  document.getElementById('recipeSteps').value = recipe.steps.join('
+');
+  editingRecipeId = id;
+  openModal();
+}
+
+function deleteRecipe(id){
+  recipes = recipes.filter(r => r.id !== id);
+  saveData();
+  renderRecipes();
 }
 
 function renderRecipes(){
@@ -221,14 +254,18 @@ function renderRecipes(){
   recipeLinks.innerHTML='';
 
   recipes
-    .filter(r => r.title.toLowerCase().includes(search) || r.category.toLowerCase().includes(search))
+    .filter(r => r.title.toLowerCase().includes(search) || r.category.toLowerCase().includes(search) || r.region.toLowerCase().includes(search))
     .forEach(recipe => {
+      if (!document.getElementById(`section-${recipe.region}`)) {
+        recipeLinks.innerHTML += `<h3 id="section-${recipe.region}" style="margin-top:18px;">${recipe.region}</h3>`;
+      }
       recipeLinks.innerHTML += `<a href="#recipe-${recipe.id}" class="recipe-link">${recipe.title}</a>`;
 
       recipeContainer.innerHTML += `
         <div class="recipe-card" id="recipe-${recipe.id}">
           <h2>${recipe.title}</h2>
           <div class="recipe-meta">
+            <span class="badge">🌍 ${recipe.region}</span>
             <span class="badge">🍽 ${recipe.category}</span>
             <span class="badge">⏱ ${recipe.time}</span>
             <span class="badge">👨‍👩‍👧 ${recipe.servings} servings</span>
@@ -236,6 +273,10 @@ function renderRecipes(){
           ${recipe.image ? `<img src="${recipe.image}" class="recipe-image" />` : ''}
           <h3 class="section-title">Ingredients</h3>
           <ul>${recipe.ingredients.map(i=>`<li>${i}</li>`).join('')}</ul>
+          <div style="display:flex;gap:10px;margin-top:15px;">
+            <button onclick="editRecipe(${recipe.id})">✏️ Edit</button>
+            <button onclick="deleteRecipe(${recipe.id})">🗑 Delete</button>
+          </div>
           <h3 class="section-title">Instructions</h3>
           <ol>${recipe.steps.map(s=>`<li>${s}</li>`).join('')}</ol>
         </div>
