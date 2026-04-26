@@ -76,7 +76,27 @@ let recipes = JSON.parse(localStorage.getItem('cookbookRecipes')) || [];
 let editingRecipeId = null;
 
 function saveData(){ localStorage.setItem('cookbookRecipes', JSON.stringify(recipes)); }
-function openModal(){ document.getElementById('recipeModal').style.display='flex'; }
+function openModal(newRecipe = true){
+  document.getElementById('recipeModal').style.display='flex';
+
+  if(newRecipe){
+    editingRecipeId = null;
+    recipeTitle.value = '';
+    recipeRegion.value = '';
+    recipeSubcategory.value = '';
+    recipeDifficulty.value = '';
+    recipePrep.value = '';
+    recipeCook.value = '';
+    recipeServings.value = '';
+    recipeOrigin.value = '';
+    recipeIngredients.value = '';
+    recipeSteps.value = '';
+    recipeNotes.value = '';
+    recipeIngredientsImage.value = '';
+    recipePrepImage.value = '';
+    recipeFinalImage.value = '';
+  }
+}
 function closeModal(){ document.getElementById('recipeModal').style.display='none'; }
 
 function fileToBase64(file){
@@ -143,7 +163,7 @@ function editRecipe(id){
   recipeIngredients.value = r.ingredients.join('\n');
   recipeSteps.value = r.steps.join('\n');
   recipeNotes.value = r.notes;
-  openModal();
+  openModal(false);
 }
 
 function deleteRecipe(id){
