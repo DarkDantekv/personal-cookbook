@@ -12,20 +12,23 @@ header{padding:40px;text-align:center;background:linear-gradient(to right,#fffaf
 .sidebar{background:#fffaf4;padding:25px;border-right:2px solid #eadcc7;height:100vh;overflow:auto;position:sticky;top:0}
 .main{padding:30px}
 .recipe-card{background:white;border-radius:24px;padding:24px;margin-bottom:25px;box-shadow:0 12px 30px rgba(0,0,0,.08)}
-.recipe-image{width:100%;height:280px;object-fit:cover;border-radius:20px;margin:15px 0}
 .recipe-link{display:block;padding:10px;border-radius:10px;text-decoration:none;color:#5b4636;margin-bottom:6px}
 .recipe-link:hover{background:#f5e8d7}
 .region-title{margin-top:18px;font-size:20px;border-bottom:1px solid #ddd;padding-bottom:6px}
 .subcategory-title{margin-left:10px;font-size:16px;color:#8b5e3c}
-.badge{background:#fff2d8;padding:8px 14px;border-radius:999px;margin-right:8px;font-size:14px}
-input,textarea,select{width:100%;padding:12px;margin:8px 0;border-radius:12px;border:1px solid #ddd}
+.badge{background:#fff2d8;padding:8px 14px;border-radius:999px;margin-right:8px;font-size:14px;display:inline-block;margin-bottom:8px}
+input,textarea{width:100%;padding:12px;margin:8px 0;border-radius:12px;border:1px solid #ddd}
 button{padding:12px 16px;border:none;border-radius:12px;cursor:pointer;font-weight:bold}
 .primary{background:#8b5e3c;color:white}
 .edit-btn{background:#f59e0b;color:white}
 .delete-btn{background:#dc2626;color:white}
 .favorite{color:gold;font-size:24px;cursor:pointer}
-.check-item{display:flex;gap:10px;align-items:center;margin:8px 0}
+.check-item{display:flex;align-items:center;gap:12px;margin:10px 0;padding:10px 14px;background:#fffaf4;border-radius:14px;border:1px solid #eadcc7;max-width:550px}
 .notes-box{background:#faf6ef;padding:15px;border-radius:16px;margin-top:20px}
+.gallery{display:flex;gap:15px;flex-wrap:wrap;margin:15px 0}
+.gallery img{width:220px;height:160px;object-fit:cover;border-radius:16px}
+details{margin-top:18px;background:#fcf8f1;padding:12px 16px;border-radius:14px}
+summary{font-size:20px;font-weight:bold;cursor:pointer}
 </style>
 </head>
 <body>
@@ -51,14 +54,16 @@ button{padding:12px 16px;border:none;border-radius:12px;cursor:pointer;font-weig
 <div style="background:white;padding:25px;border-radius:24px;width:min(700px,95%);max-height:90vh;overflow:auto;">
 <h2>Add / Edit Recipe</h2>
 <input id="recipeTitle" placeholder="Recipe title" />
-<input id="recipeRegion" placeholder="Region (South Indian, Italian...)" />
-<input id="recipeSubcategory" placeholder="Subcategory (Breakfast, Curry, Dessert...)" />
-<input id="recipeDifficulty" placeholder="Difficulty (Easy, Medium, Hard)" />
+<input id="recipeRegion" placeholder="Region" />
+<input id="recipeSubcategory" placeholder="Subcategory" />
+<input id="recipeDifficulty" placeholder="Difficulty" />
 <input id="recipePrep" placeholder="Prep time" />
 <input id="recipeCook" placeholder="Cook time" />
 <input id="recipeServings" placeholder="Servings" />
 <input id="recipeOrigin" placeholder="Family origin / story" />
-<input id="recipeImage" type="file" accept="image/*" />
+<input id="recipeIngredientsImage" type="file" accept="image/*" />
+<input id="recipePrepImage" type="file" accept="image/*" />
+<input id="recipeFinalImage" type="file" accept="image/*" />
 <textarea id="recipeIngredients" placeholder="Ingredients (one per line)"></textarea>
 <textarea id="recipeSteps" placeholder="Steps (one per line)"></textarea>
 <textarea id="recipeNotes" placeholder="Notes / Reviews / Tips"></textarea>
@@ -70,139 +75,174 @@ button{padding:12px 16px;border:none;border-radius:12px;cursor:pointer;font-weig
 let recipes = JSON.parse(localStorage.getItem('cookbookRecipes')) || [];
 let editingRecipeId = null;
 
-function saveData(){localStorage.setItem('cookbookRecipes', JSON.stringify(recipes));}
-function openModal(){document.getElementById('recipeModal').style.display='flex';}
-function closeModal(){document.getElementById('recipeModal').style.display='none';}
+function saveData(){ localStorage.setItem('cookbookRecipes', JSON.stringify(recipes)); }
+function openModal(){ document.getElementById('recipeModal').style.display='flex'; }
+function closeModal(){ document.getElementById('recipeModal').style.display='none'; }
 
-function saveRecipe(){
- const imageFile = document.getElementById('recipeImage').files[0];
- if(imageFile){
-   const reader = new FileReader();
-   reader.onload=(e)=>finalSave(e.target.result);
-   reader.readAsDataURL(imageFile);
- } else finalSave('');
+function fileToBase64(file){
+  return new Promise(resolve=>{
+    if(!file) return resolve('');
+    const reader = new FileReader();
+    reader.onload=e=>resolve(e.target.result);
+    reader.readAsDataURL(file);
+  });
 }
 
-function finalSave(image){
- const recipe={
-   id: editingRecipeId || Date.now(),
-   title: recipeTitle.value,
-   region: recipeRegion.value,
-   subcategory: recipeSubcategory.value,
-   difficulty: recipeDifficulty.value,
-   prep: recipePrep.value,
-   cook: recipeCook.value,
-   servings: recipeServings.value,
-   origin: recipeOrigin.value,
-   image: image || (editingRecipeId ? recipes.find(r=>r.id===editingRecipeId).image : ''),
-   ingredients: recipeIngredients.value.split('\n').filter(Boolean),
-   steps: recipeSteps.value.split('\n').filter(Boolean),
-   notes: recipeNotes.value,
-   favorite:false
- };
+async function saveRecipe(){
+  const ingredientsImg = await fileToBase64(recipeIngredientsImage.files[0]);
+  const prepImg = await fileToBase64(recipePrepImage.files[0]);
+  const finalImg = await fileToBase64(recipeFinalImage.files[0]);
 
- if(editingRecipeId){
-   const index = recipes.findIndex(r=>r.id===editingRecipeId);
-   recipe.favorite = recipes[index].favorite;
-   recipes[index]=recipe;
- } else recipes.push(recipe);
+  const existing = recipes.find(r=>r.id===editingRecipeId) || {};
 
- editingRecipeId=null;
- saveData();
- renderRecipes();
- closeModal();
+  const recipe = {
+    id: editingRecipeId || Date.now(),
+    title: recipeTitle.value,
+    region: recipeRegion.value,
+    subcategory: recipeSubcategory.value,
+    difficulty: recipeDifficulty.value,
+    prep: recipePrep.value,
+    cook: recipeCook.value,
+    servings: recipeServings.value,
+    origin: recipeOrigin.value,
+    ingredients: recipeIngredients.value.split('\n').filter(Boolean),
+    steps: recipeSteps.value.split('\n').filter(Boolean),
+    notes: recipeNotes.value,
+    favorite: existing.favorite || false,
+    images: {
+      ingredients: ingredientsImg || existing?.images?.ingredients || '',
+      prep: prepImg || existing?.images?.prep || '',
+      final: finalImg || existing?.images?.final || ''
+    }
+  };
+
+  if(editingRecipeId){
+    const index = recipes.findIndex(r=>r.id===editingRecipeId);
+    recipes[index] = recipe;
+  } else {
+    recipes.push(recipe);
+  }
+
+  editingRecipeId = null;
+  saveData();
+  renderRecipes();
+  closeModal();
 }
 
 function editRecipe(id){
- const r = recipes.find(x=>x.id===id);
- editingRecipeId=id;
- recipeTitle.value=r.title;
- recipeRegion.value=r.region;
- recipeSubcategory.value=r.subcategory;
- recipeDifficulty.value=r.difficulty;
- recipePrep.value=r.prep;
- recipeCook.value=r.cook;
- recipeServings.value=r.servings;
- recipeOrigin.value=r.origin;
- recipeIngredients.value=r.ingredients.join('\n');
- recipeSteps.value=r.steps.join('\n');
- recipeNotes.value=r.notes;
- openModal();
+  const r = recipes.find(x=>x.id===id);
+  editingRecipeId = id;
+  recipeTitle.value = r.title;
+  recipeRegion.value = r.region;
+  recipeSubcategory.value = r.subcategory;
+  recipeDifficulty.value = r.difficulty;
+  recipePrep.value = r.prep;
+  recipeCook.value = r.cook;
+  recipeServings.value = r.servings;
+  recipeOrigin.value = r.origin;
+  recipeIngredients.value = r.ingredients.join('\n');
+  recipeSteps.value = r.steps.join('\n');
+  recipeNotes.value = r.notes;
+  openModal();
 }
 
 function deleteRecipe(id){
- recipes = recipes.filter(r=>r.id!==id);
- saveData();
- renderRecipes();
+  recipes = recipes.filter(r=>r.id!==id);
+  saveData();
+  renderRecipes();
 }
 
 function toggleFavorite(id){
- const recipe = recipes.find(r=>r.id===id);
- recipe.favorite=!recipe.favorite;
- saveData();
- renderRecipes();
+  const recipe = recipes.find(r=>r.id===id);
+  recipe.favorite = !recipe.favorite;
+  saveData();
+  renderRecipes();
 }
 
 function renderRecipes(){
- const search = document.getElementById('search').value.toLowerCase();
- const recipeContainer = document.getElementById('recipeContainer');
- const recipeLinks = document.getElementById('recipeLinks');
- recipeContainer.innerHTML='';
- recipeLinks.innerHTML='';
+  const search = document.getElementById('search').value.toLowerCase();
+  const recipeContainer = document.getElementById('recipeContainer');
+  const recipeLinks = document.getElementById('recipeLinks');
+  recipeContainer.innerHTML='';
+  recipeLinks.innerHTML='';
 
- const grouped={};
- recipes.filter(r=>
-   r.title.toLowerCase().includes(search) ||
-   r.region.toLowerCase().includes(search) ||
-   r.subcategory.toLowerCase().includes(search)
- ).forEach(recipe=>{
-   if(!grouped[recipe.region]) grouped[recipe.region]={};
-   if(!grouped[recipe.region][recipe.subcategory]) grouped[recipe.region][recipe.subcategory]=[];
-   grouped[recipe.region][recipe.subcategory].push(recipe);
- });
+  const grouped = {};
 
- Object.keys(grouped).forEach(region=>{
-   recipeLinks.innerHTML += `<div class='region-title'>${region}</div>`;
-   Object.keys(grouped[region]).forEach(sub=>{
-     recipeLinks.innerHTML += `<div class='subcategory-title'>${sub}</div>`;
-     grouped[region][sub].forEach(recipe=>{
-       recipeLinks.innerHTML += `<a href='#recipe-${recipe.id}' class='recipe-link'>${recipe.title}</a>`;
+  recipes.filter(r =>
+    r.title.toLowerCase().includes(search) ||
+    r.region.toLowerCase().includes(search) ||
+    r.subcategory.toLowerCase().includes(search)
+  ).forEach(recipe => {
+    if(!grouped[recipe.region]) grouped[recipe.region] = {};
+    if(!grouped[recipe.region][recipe.subcategory]) grouped[recipe.region][recipe.subcategory] = [];
+    grouped[recipe.region][recipe.subcategory].push(recipe);
+  });
 
-       recipeContainer.innerHTML += `
-       <div class='recipe-card' id='recipe-${recipe.id}'>
-         <div style='display:flex;justify-content:space-between;'>
-           <h2>${recipe.title}</h2>
-           <span class='favorite' onclick='toggleFavorite(${recipe.id})'>${recipe.favorite ? '⭐':'☆'}</span>
-         </div>
-         <div>
-           <span class='badge'>🌍 ${recipe.region}</span>
-           <span class='badge'>🍽 ${recipe.subcategory}</span>
-           <span class='badge'>🔥 ${recipe.difficulty}</span>
-           <span class='badge'>⏱ Prep ${recipe.prep}</span>
-           <span class='badge'>🍳 Cook ${recipe.cook}</span>
-           <span class='badge'>👨‍👩‍👧 ${recipe.servings}</span>
-         </div>
-         ${recipe.image ? `<img src='${recipe.image}' class='recipe-image' />` : ''}
-         <p><strong>Origin:</strong> ${recipe.origin}</p>
-         <h3>Ingredients</h3>
-         ${recipe.ingredients.map(i=>`<div class='check-item'><input type='checkbox'> ${i}</div>`).join('')}
-         <h3>Instructions</h3>
-         <ol>${recipe.steps.map(s=>`<li>${s}</li>`).join('')}</ol>
-         <div class='notes-box'>
-           <h3>Notes / Reviews</h3>
-           <p>${recipe.notes || 'No notes yet.'}</p>
-         </div>
-         <div style='margin-top:15px;display:flex;gap:10px;'>
-           <button class='edit-btn' onclick='editRecipe(${recipe.id})'>✏️ Edit</button>
-           <button class='delete-btn' onclick='deleteRecipe(${recipe.id})'>🗑 Delete</button>
-         </div>
-       </div>`;
-     });
-   });
- });
+  Object.keys(grouped).forEach(region => {
+    recipeLinks.innerHTML += `<div class='region-title'>${region}</div>`;
+    Object.keys(grouped[region]).forEach(sub => {
+      recipeLinks.innerHTML += `<div class='subcategory-title'>${sub}</div>`;
+      grouped[region][sub].forEach(recipe => {
+        recipeLinks.innerHTML += `<a href='#recipe-${recipe.id}' class='recipe-link'>${recipe.title}</a>`;
+
+        recipeContainer.innerHTML += `
+        <div class='recipe-card' id='recipe-${recipe.id}'>
+          <div style='display:flex;justify-content:space-between;'>
+            <h2>${recipe.title}</h2>
+            <span class='favorite' onclick='toggleFavorite(${recipe.id})'>${recipe.favorite ? '⭐' : '☆'}</span>
+          </div>
+
+          <div>
+            <span class='badge'>🌍 ${recipe.region}</span>
+            <span class='badge'>🍽 ${recipe.subcategory}</span>
+            <span class='badge'>🔥 ${recipe.difficulty}</span>
+            <span class='badge'>⏱ Prep ${recipe.prep}</span>
+            <span class='badge'>🍳 Cook ${recipe.cook}</span>
+            <span class='badge'>👨‍👩‍👧 ${recipe.servings}</span>
+          </div>
+
+          <p><strong>Origin:</strong> ${recipe.origin}</p>
+
+          <div class='gallery'>
+            ${recipe.images.ingredients ? `<img src='${recipe.images.ingredients}' alt='Ingredients'>` : ''}
+            ${recipe.images.prep ? `<img src='${recipe.images.prep}' alt='Prep'>` : ''}
+            ${recipe.images.final ? `<img src='${recipe.images.final}' alt='Final Dish'>` : ''}
+          </div>
+
+          <details>
+            <summary>Ingredients</summary>
+            ${recipe.ingredients.map(i => `
+              <label class='check-item'>
+                <input type='checkbox'>
+                <span>${i}</span>
+              </label>
+            `).join('')}
+          </details>
+
+          <details>
+            <summary>Instructions</summary>
+            <ol>${recipe.steps.map(s=>`<li>${s}</li>`).join('')}</ol>
+          </details>
+
+          <details>
+            <summary>Notes / Reviews</summary>
+            <div class='notes-box'>${recipe.notes || 'No notes yet.'}</div>
+          </details>
+
+          <div style='margin-top:15px;display:flex;gap:10px;'>
+            <button class='edit-btn' onclick='editRecipe(${recipe.id})'>✏️ Edit</button>
+            <button class='delete-btn' onclick='deleteRecipe(${recipe.id})'>🗑 Delete</button>
+          </div>
+        </div>`;
+      });
+    });
+  });
 }
 
-document.getElementById('recipeModal').addEventListener('click',(e)=>{if(e.target.id==='recipeModal') closeModal();});
+document.getElementById('recipeModal').addEventListener('click', (e)=>{
+  if(e.target.id==='recipeModal') closeModal();
+});
+
 renderRecipes();
 </script>
 </body>
