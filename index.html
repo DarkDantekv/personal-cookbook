@@ -204,9 +204,9 @@ function renderRecipes(){
           <p><strong>Origin:</strong> ${recipe.origin}</p>
 
           <div class='gallery'>
-            ${recipe.images.ingredients ? `<img src='${recipe.images.ingredients}' alt='Ingredients'>` : ''}
-            ${recipe.images.prep ? `<img src='${recipe.images.prep}' alt='Prep'>` : ''}
-            ${recipe.images.final ? `<img src='${recipe.images.final}' alt='Final Dish'>` : ''}
+            ${recipe.images?.ingredients ? `<img src='${recipe.images.ingredients}' alt='Ingredients'>` : ''}
+            ${recipe.images?.prep ? `<img src='${recipe.images.prep}' alt='Prep'>` : ''}
+            ${recipe.images?.final ? `<img src='${recipe.images.final}' alt='Final Dish'>` : ''}
           </div>
 
           <details>
